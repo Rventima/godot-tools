@@ -1,6 +1,6 @@
 # Debug.gd class:
 
-For use this tool, you must instantiate the class in the next way : var debug : Debug = Debug.new(self.name)\
+For use this tool, you must instantiate the class as following: var debug : Debug = Debug.new(self)\
 then you can use it i.e.: 	
 
 debug.log("Hi.") # info message \
