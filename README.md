@@ -4,7 +4,7 @@
 To use this tool, you must instantiate the Debug class in the Node's attached script as following: 
 
 `var debug : Debug = Debug.new(self)`
-### It is important toread 'Must have' section
+### It is important to read 'Must have' section
 then you can use it i.e.: 	
 
 	debug.log("Hi.") # info message 
@@ -19,7 +19,15 @@ Every Debug.log function has a last boolean parameter where you can optionally s
 
 As you can see, `log_error` stops the execution by default without specify the last parameter. 
 
- 
+### Printing current frame rate. 
+To get the current frame rate in the scene where Debug class was instantiated follow the next examples:
+```
+	debug.log_fps_every_seconds()# prints every 2 seconds (the default time).
+	debug.log_fps_every_seconds(5)# prints every 5 seconds.
+	debug.log_fps_every_seconds(0)# prints fps and a warning using the default time.
+	debug.log_fps_every_seconds(-1)# prints fps and a warning using the default time.
+```
+
 
 
 
