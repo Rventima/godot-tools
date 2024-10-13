@@ -1,33 +1,70 @@
 @tool
 extends Node
+## Debug class that customizes pushing warnings, errors or simply console log messages
+## At instancing you must pass [code]self[/code].
+## @experimental: Work in progress
 class_name Debug
 
-## colors
+## Color for simple console message
 const _LOG_COLOR : String = "10FFFF"
+## Color for warning message
 const _WARNING_COLOR : String = "FFE100"
+## Color for error message
 const _ERROR_COLOR : String = "FF4545"
+## Color for the message itself
 const _MESSAGE_COLOR : String = "FFFFFF"
 
-## name of this debug control (i.e., Node name where this class is instantiated). 
+## Name of this debug control (i.e., Node name where this class is instantiated). 
 var where : String
+## Font size for the printed logs.
 var font_size : int = 20
-var _node : Node
 
+var _node : Node
+var _timer : Timer = Timer.new()
+const _TIMER_DEFAULT_TIME : float = 2
+var _fps : float = 0.0
+var _seconds_warning_message : bool = false
+
+# setting custom setter to change the timer wait_time
+var _seconds : float = -1:
+	set(value):
+		if value == _TIMER_DEFAULT_TIME && not _seconds_warning_message:
+			_seconds = value
+		else:
+			_seconds_warning_message = false
+			_seconds = value
+			_timer.wait_time = _seconds
+		
+
+## If set to true, the messages will print in the OS console since this one
+## it's different from Output dock.
+## @experimental: Not implemented in every log functions of this class. 
+var print_to_os_console : bool = false
 
 ## inits the name for this instance to know from where the message comes from. 
 func _init(_self : Node) -> void:
 	where = _self.name
 	_node = _self
 	
+	_timer.one_shot = false
+	_timer.autostart = false
+	_timer.name = "fps_timer"
+	_timer.paused = true
+	_node.add_child(_timer,false,Node.INTERNAL_MODE_BACK)
+	_timer.paused = false
+	_timer.timeout.connect(_on_time_out,CONNECT_PERSIST)
+	_timer.start(_TIMER_DEFAULT_TIME)
+	
 
-## simple message
+## Simple message
 func log(message : String, pause_execution = false) -> void:
 	if _is_on_editor():
 		print_rich("[b][color=%s]Script '%s' says:[/color][b] [color=%s]%s[/color]" %[_LOG_COLOR, where, _MESSAGE_COLOR, message])
 		
 		assert(not pause_execution, message)
 
-## info message
+
+## Info message
 func log_warn(message : String, pause_execution = false) -> void:
 	if _is_on_editor():
 		print_rich("[b][color=%s]Script '%s' warns a message:[/color][b] [color=%s]%s[/color]" %[_WARNING_COLOR, where, _MESSAGE_COLOR, message])
@@ -35,19 +72,50 @@ func log_warn(message : String, pause_execution = false) -> void:
 		
 		assert(not pause_execution, message)
 
-## error message
+## Error message. Pauses execution by default unless [code]pause_execution[/code] is set to true
 func log_error(message : String, pause_execution = true) -> void:
 	if _is_on_editor():
 		print_rich("[b][color=%s]Script '%s' says there's an error:[/color][b] [color=%s]%s[/color]" %[_ERROR_COLOR, where, _MESSAGE_COLOR, message])
 		push_error(message)
 		scope()
 		assert(not pause_execution, message)
+
+
+## Prints frames per second every 2 seconds by default and returns frame rate in %.1f format.[br] 
+## The paramater [code]seconds[/code] is the time delay in seconds between each Output dock print.
+## The frame rate returned comes from the current [SceneTree]. 
+func log_fps_every_seconds(seconds : float = _TIMER_DEFAULT_TIME)  -> float:
+	
+	if seconds > 0:
+		_seconds = seconds
+		
+	if seconds <= 0:
+		_seconds = _TIMER_DEFAULT_TIME
+		_seconds_warning_message = true
+		
+	return _fps
+	
+	
+# Callable for log_fps_every_seconds timersignal. 
+func _on_time_out() -> float:
+	_fps = Engine.get_frames_per_second()
+	
+	if _seconds_warning_message:
+		log_warn("'log_fps_every_seconds' function needs a time greater than 0. Time set to default (2s).")
+		
+	if print_to_os_console:
+		printraw("\nFPS: %.1f" % _fps)
+		
+	else:
+		print("FPS : %0.1f" % _fps)
+			
+	return _fps
 		
 	
 func _is_on_editor() -> bool:
 	return OS.has_feature("editor")
 	
-
+# Gets the user path to a given script
 func scope() -> void:
 	const GD_EXTENSION = ".gd"
 	
@@ -116,8 +184,7 @@ class FileFinder:
 			return false
 		else: return true
 
-
-	## ChatGPT courtesy directory recursive find
+	# Recursive directory search
 	func _find_directories(dir: DirAccess) -> PackedStringArray:
 		# Initialize the list to store directories
 		var list_directories: PackedStringArray = []
